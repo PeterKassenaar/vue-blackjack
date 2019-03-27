@@ -3,8 +3,12 @@
     <div v-if="!value.placed">
       <h4>Place your bets</h4>
       <message-box v-if="message" :message="message"></message-box>
-      <p>Place your bet to start a game. The minimum bet size is €10 and the maximum bet size is €{{ cash }}.</p>
-      <input type="number" v-model="betSize">
+      <p>
+        <label for="betSize">
+        Place your bet to start a game. The minimum bet size is €10 and the maximum bet size is &euro; {{ cash }}.
+        </label>
+      </p>
+      <input type="number" v-model="betSize" id="betSize" placeholder="Bet size...">
       <button class="btn btn-warning" @click="placeBet">Place bet</button>
     </div>
     <div v-if="value.placed">

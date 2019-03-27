@@ -9,9 +9,16 @@
                     <h2>Player:</h2>
                     <hand v-if="player.hand.length > 0" :cards="player.hand"></hand>
                     <div>Total score: {{ player.handValue }}</div>
+                    <div class="alert alert-info" v-if="debugMode">
+                        <h4>Debugging/development box</h4>
+                        <p v-if="player.aces > 0">Aces: {{player.aces }}</p>
+                        <p v-if="player.numCards > 0">no. of cards: {{player.numCards}}</p>
+                        <p>blackjack: {{checkBlackjack()}}</p>
+                        <p>Pair: {{ isPair }} </p>
+                    </div>
                     <button class="btn btn-warning" @click="houseTurn(house)" :disabled="!playerTurn">Stand</button>
                     <button class="btn btn-warning" @click="playerHit" :disabled="!playerTurn">Hit</button>
-                    <button class="btn btn-warning" @click="playerDouble" :disabled="!playerTurn">Double</button>
+                    <button class="btn btn-warning" @click="playerDouble" :disabled="!canDouble">Double</button>
                     <button class="btn btn-warning" :disabled="!playerTurn">Split</button>
                     <button class="btn btn-warning" @click="resetGame" :disabled="playerTurn">New Round</button>
                 </div>
@@ -48,11 +55,15 @@
                 deckId: '',
                 player: {
                     hand: [],
-                    handValue: 0
+                    handValue: 0,
+                    aces: 0,
+                    numCards: 0
                 },
                 house: {
                     hand: [],
-                    handValue: 0
+                    handValue: 0,
+                    aces: 0,
+                    numCards: 0
                 },
                 message: "",
                 cash: 1000,
@@ -62,7 +73,8 @@
                 },
                 gameEnd: false,
                 playerTurn: false,
-                gameResults: []
+                gameResults: [],
+                debugMode: true // DEBUGGING FLAG
             };
         },
         mounted() {
@@ -81,6 +93,8 @@
                 this.gameEnd = false;
                 this.playerTurn = false;
                 this.message = "";
+                this.player.numCards = 0;
+                this.player.aces = 0;
             },
             newGame() {
                 this.message = "";
@@ -94,8 +108,14 @@
                 return CardsApi.draw(this.deckId, number).then(response => {
                     response.cards.forEach(card => {
                         player.hand.push(card);
+                        player.numCards += 1;
                     });
+                    // calculate initial value of player hand
                     player.handValue = this.calculateHandValue(player);
+                    // check if player has blackjack
+                    if (this.checkBlackjack()) {
+                        this.determineWinner();
+                    }
                 });
             },
             calculateHandValue(player) {
@@ -113,7 +133,9 @@
                             cardTotal += 11;
                         } else {
                             cardTotal += 1;
+
                         }
+                        player.aces += 1;
                     } else {
                         cardTotal += parseInt(card.value);
                     }
@@ -126,13 +148,19 @@
                 });
             },
             playerDouble() {
-                this.cash -= this.bet.size;
-                this.bet.size *= 2;
-                this.playerHit().then(() => {
-                    if (!this.gameEnd) {
-                        this.houseTurn();
-                    }
-                });
+                // Double down only allowed on first two cards
+                if (this.player.numCards === 2) {
+                    this.cash -= this.bet.size;
+                    this.bet.size *= 2;
+                    this.playerHit().then(() => {
+                        if (!this.gameEnd) {
+                            this.houseTurn();
+                        }
+                    });
+                }
+            },
+            checkBlackjack() {
+                return this.player.numCards === 2 && this.player.handValue === 21;
             },
             houseTurn() {
                 this.playerTurn = false;
@@ -176,6 +204,18 @@
                     amount: amount
                 });
             }
+        },
+        computed: {
+            canDouble() {
+                return this.player.numCards === 2;
+            },
+            isPair() {
+                if (this.player.numCards !== 2) {
+                    return false;
+                } else {
+                    return this.player.hand[0].value === this.player.hand[1].value;
+                }
+            }
         }
     };
 </script>
@@ -185,10 +225,6 @@
         background-color: #ffc107;
         padding: 1rem;
         color: black;
-    }
-
-    .header {
-        background-color: #ff0000;
     }
 
     h1 {
